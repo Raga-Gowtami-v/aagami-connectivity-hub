@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { 
   BookOpen, 
   LibraryBig, 
-  Flask, 
+  Beaker, 
   BarChart3, 
   MessageSquare, 
   HelpCircle, 

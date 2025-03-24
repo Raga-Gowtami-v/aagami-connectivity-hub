@@ -1,5 +1,5 @@
 
-import { BookOpen, UserCog, Users, ChalkboardTeacher, Lightbulb, Award } from 'lucide-react';
+import { BookOpen, UserCog, Users, School, Lightbulb, Award } from 'lucide-react';
 import FeatureCard from './FeatureCard';
 
 const FeaturesSection = () => {
@@ -25,7 +25,7 @@ const FeaturesSection = () => {
     {
       title: "Expert Teachers",
       description: "Learn from qualified teachers who provide personalized feedback and guidance.",
-      icon: <ChalkboardTeacher className="h-6 w-6" />,
+      icon: <School className="h-6 w-6" />,
       delay: 400
     },
     {
