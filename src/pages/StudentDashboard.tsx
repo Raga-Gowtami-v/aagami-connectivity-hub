@@ -12,14 +12,13 @@ import {
   Bell, 
   LogOut, 
   Menu, 
-  X,
-  HelpingHand,
-  BookmarkPlus,
-  Brain,
+  X, 
   Users,
-  ChevronRight
+  Award,
+  Bot,
+  ArrowRight
 } from 'lucide-react';
-import DashboardCard from '../components/dashboard/DashboardCard';
+import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 
 const StudentDashboard = () => {
@@ -94,7 +93,7 @@ const StudentDashboard = () => {
                   to="/student-dashboard/virtual-lab" 
                   className="flex items-center px-4 py-3 text-gray-700 hover:bg-primary/10 hover:text-primary"
                 >
-                  <Flask className="h-5 w-5 mr-3" />
+                  <Beaker className="h-5 w-5 mr-3" />
                   Virtual Lab
                 </Link>
               </li>
@@ -130,11 +129,11 @@ const StudentDashboard = () => {
           
           <div className="p-4 border-t">
             <div className="flex items-center">
-              <div className="w-10 h-10 rounded-full bg-aagami-sage/20 flex items-center justify-center text-aagami-sage text-sm font-medium">
-                RP
+              <div className="w-10 h-10 rounded-full bg-aagami-terracotta/20 flex items-center justify-center text-aagami-terracotta text-sm font-medium">
+                JS
               </div>
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-700">Raj Patel</p>
+                <p className="text-sm font-medium text-gray-700">John Smith</p>
                 <p className="text-xs text-gray-500">Student</p>
               </div>
             </div>
@@ -189,52 +188,26 @@ const StudentDashboard = () => {
         
         {/* Dashboard content */}
         <main className="p-6">
-          <div className="glass-card rounded-xl p-6 mb-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-medium mb-1">Welcome back, Raj!</h2>
-                <p className="text-gray-600">Track your progress and continue learning</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-gray-700">Your coins:</span>
-                <div className="bg-aagami-gold/20 text-aagami-gold px-3 py-1.5 rounded-full font-medium flex items-center">
-                  <span className="mr-1">250</span>
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M14.5 9C14.5 7.61929 13.3807 6.5 12 6.5C10.6193 6.5 9.5 7.61929 9.5 9C9.5 10.1046 10.1716 11.0634 11.1518 11.3799C11.3298 11.4351 11.4932 11.5139 11.6382 11.6139C11.8757 11.7849 12 12.0611 12 12.35V12.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M12 16H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-                <Link 
-                  to="/student-dashboard/leaderboard" 
-                  className="bg-white border border-gray-200 px-3 py-1.5 rounded-full font-medium text-sm hover:bg-gray-50 transition-colors"
-                >
-                  View Leaderboard
-                </Link>
-              </div>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <DashboardCard
               title="Request a Service"
-              description="Request devices, funding for fees, school books, and more"
-              icon={<HelpingHand className="h-6 w-6 text-aagami-terracotta" />}
+              description="Request a device, funding for fees, school books and more"
+              icon={<HelpCircle className="h-6 w-6 text-aagami-terracotta" />}
               to="/student-dashboard/request-service"
               color="bg-aagami-terracotta"
             />
             
             <DashboardCard
               title="Learn and Earn"
-              description="Become a certified mentor, help juniors, and earn rewards"
-              icon={<BookmarkPlus className="h-6 w-6 text-aagami-blue" />}
+              description="Become a certified mentor, teach juniors, learn new courses"
+              icon={<Award className="h-6 w-6 text-aagami-blue" />}
               to="/student-dashboard/learn-earn"
               color="bg-aagami-blue"
             />
             
             <DashboardCard
               title="Library"
-              description="Access categorized learning resources, books, and videos"
+              description="Access categorized resources, books, videos and materials"
               icon={<LibraryBig className="h-6 w-6 text-aagami-sage" />}
               to="/student-dashboard/library"
               color="bg-aagami-sage"
@@ -242,18 +215,18 @@ const StudentDashboard = () => {
             
             <DashboardCard
               title="Practice"
-              description="Take quizzes, solve problems, and earn points"
-              icon={<BookOpen className="h-6 w-6 text-aagami-gold" />}
+              description="Take quizzes, solve problems, learn coding with gamification"
+              icon={<BookOpen className="h-6 w-6 text-primary" />}
               to="/student-dashboard/practice"
-              color="bg-aagami-gold"
+              color="bg-primary"
             />
             
             <DashboardCard
               title="AI Mentor"
-              description="Get personalized guidance and answers to your questions"
-              icon={<Brain className="h-6 w-6 text-primary" />}
+              description="Get personalized guidance from our AI tutor"
+              icon={<Bot className="h-6 w-6 text-aagami-gold" />}
               to="/student-dashboard/ai-mentor"
-              color="bg-primary"
+              color="bg-aagami-gold"
             />
             
             <DashboardCard
@@ -265,108 +238,119 @@ const StudentDashboard = () => {
             />
           </div>
           
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="glass-card rounded-xl overflow-hidden md:col-span-2">
-              <div className="p-6">
-                <h3 className="text-lg font-medium mb-4">Your Learning Progress</h3>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>Mathematics</span>
-                      <span>75%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-aagami-sage h-2 rounded-full" style={{ width: '75%' }}></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>Science</span>
-                      <span>60%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-aagami-blue h-2 rounded-full" style={{ width: '60%' }}></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>English</span>
-                      <span>90%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-aagami-gold h-2 rounded-full" style={{ width: '90%' }}></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>Computer Science</span>
-                      <span>45%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-aagami-terracotta h-2 rounded-full" style={{ width: '45%' }}></div>
-                    </div>
-                  </div>
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="glass-card rounded-xl overflow-hidden p-6">
+              <h3 className="text-lg font-medium mb-4">Your Rewards</h3>
+              <div className="flex items-center mb-4">
+                <div className="w-16 h-16 rounded-full bg-aagami-gold/20 flex items-center justify-center text-aagami-gold">
+                  <Award className="h-8 w-8" />
                 </div>
-                <div className="mt-4 pt-4 border-t">
-                  <Link 
-                    to="/student-dashboard/analysis" 
-                    className="text-primary hover:text-primary/80 font-medium inline-flex items-center"
-                  >
-                    View detailed analysis
-                    <ChevronRight className="ml-1 h-4 w-4" />
-                  </Link>
+                <div className="ml-4">
+                  <p className="text-2xl font-bold">350 coins</p>
+                  <p className="text-sm text-gray-500">Worth ₹35</p>
                 </div>
+              </div>
+              <div className="mt-4 pt-4 border-t">
+                <Link 
+                  to="/student-dashboard/rewards" 
+                  className="text-primary hover:text-primary/80 font-medium inline-flex items-center"
+                >
+                  View rewards history
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </Link>
               </div>
             </div>
             
-            <div className="glass-card rounded-xl overflow-hidden">
-              <div className="p-6">
-                <h3 className="text-lg font-medium mb-4">Upcoming Sessions</h3>
-                <div className="space-y-4">
-                  <div className="border border-gray-200 rounded-lg p-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium">Chemistry Tutoring</h4>
-                        <p className="text-sm text-gray-600">with Anita Sharma</p>
-                      </div>
-                      <span className="bg-aagami-sage/10 text-aagami-sage text-xs px-2 py-1 rounded-full">
-                        Today
-                      </span>
+            <div className="glass-card rounded-xl overflow-hidden p-6">
+              <h3 className="text-lg font-medium mb-4">Leaderboard</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 rounded-full bg-aagami-terracotta/20 flex items-center justify-center text-aagami-terracotta text-xs font-medium">
+                      1
                     </div>
-                    <div className="mt-2 text-sm text-gray-600">
-                      4:00 PM - 5:00 PM
-                    </div>
+                    <p className="ml-3 text-sm font-medium">Priya Sharma</p>
                   </div>
-                  <div className="border border-gray-200 rounded-lg p-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium">Math Problem Solving</h4>
-                        <p className="text-sm text-gray-600">with Vikram Mehta</p>
-                      </div>
-                      <span className="bg-aagami-blue/10 text-aagami-blue text-xs px-2 py-1 rounded-full">
-                        Tomorrow
-                      </span>
+                  <p className="text-sm font-semibold">760 coins</p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 rounded-full bg-aagami-blue/20 flex items-center justify-center text-aagami-blue text-xs font-medium">
+                      2
                     </div>
-                    <div className="mt-2 text-sm text-gray-600">
-                      2:30 PM - 3:30 PM
-                    </div>
+                    <p className="ml-3 text-sm font-medium">Raj Kumar</p>
                   </div>
+                  <p className="text-sm font-semibold">685 coins</p>
                 </div>
-                <div className="mt-4 pt-4 border-t">
-                  <Link 
-                    to="/student-dashboard/sessions" 
-                    className="text-primary hover:text-primary/80 font-medium inline-flex items-center"
-                  >
-                    View all sessions
-                    <ChevronRight className="ml-1 h-4 w-4" />
-                  </Link>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 rounded-full bg-aagami-sage/20 flex items-center justify-center text-aagami-sage text-xs font-medium">
+                      3
+                    </div>
+                    <p className="ml-3 text-sm font-medium">Ananya Singh</p>
+                  </div>
+                  <p className="text-sm font-semibold">590 coins</p>
                 </div>
+                <div className="flex items-center justify-between bg-primary/5 p-2 rounded">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-medium">
+                      8
+                    </div>
+                    <p className="ml-3 text-sm font-medium">You</p>
+                  </div>
+                  <p className="text-sm font-semibold">350 coins</p>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t">
+                <Link 
+                  to="/student-dashboard/leaderboard" 
+                  className="text-primary hover:text-primary/80 font-medium inline-flex items-center"
+                >
+                  View full leaderboard
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </Link>
               </div>
             </div>
           </div>
         </main>
       </div>
     </div>
+  );
+};
+
+// Helper component for dashboard cards
+interface DashboardCardProps {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  to: string;
+  color: string;
+}
+
+const DashboardCard = ({ title, description, icon, to, color }: DashboardCardProps) => {
+  return (
+    <Link 
+      to={to} 
+      className="hover-lift group glass-card rounded-xl overflow-hidden transition-all duration-300 flex flex-col h-full"
+    >
+      <div className={`h-1.5 ${color}`} />
+      <div className="p-6 flex flex-col h-full">
+        <div className="flex items-center justify-between mb-4">
+          <div className={`p-3 rounded-lg ${color.replace('bg-', 'bg-').replace('/', '/10')}`}>
+            {icon}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`rounded-full ${color.replace('bg-', 'bg-').replace('/', '/10')} group-hover:${color} transition-colors duration-300`}
+          >
+            <ArrowRight className="h-5 w-5 text-gray-600 group-hover:text-white transition-colors duration-300" />
+          </Button>
+        </div>
+        <h3 className="text-lg font-medium mb-2">{title}</h3>
+        <p className="text-gray-600 text-sm flex-grow">{description}</p>
+      </div>
+    </Link>
   );
 };
 
