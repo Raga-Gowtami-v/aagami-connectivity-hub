@@ -5,15 +5,14 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY", // Replace with your Firebase API key
+  apiKey: process.env.FIREBASE_API_KEY || "YOUR_API_KEY",
   authDomain: "aagami-app.firebaseapp.com",
   projectId: "aagami-app",
   storageBucket: "aagami-app.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  measurementId: "YOUR_MEASUREMENT_ID"
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "YOUR_MESSAGING_SENDER_ID",
+  appId: process.env.FIREBASE_APP_ID || "YOUR_APP_ID",
+  measurementId: process.env.FIREBASE_MEASUREMENT_ID || "YOUR_MEASUREMENT_ID"
 };
 
 // Initialize Firebase

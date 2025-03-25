@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { 
   User, 
@@ -7,7 +6,8 @@ import {
   signOut, 
   onAuthStateChanged,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  UserCredential
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
@@ -64,15 +64,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function signup(email: string, password: string, role: "student" | "teacher" | "pathguider") {
+  async function signup(email: string, password: string, role: "student" | "teacher" | "pathguider"): Promise<void> {
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password);
-      // Create user profile in Firestore
       await setDoc(doc(db, "users", result.user.uid), {
         email: result.user.email,
         displayName: result.user.displayName || email.split('@')[0],
         role: role,
-        coins: 100, // Starting coins
+        coins: 100,
         createdAt: new Date().toISOString()
       });
       
@@ -80,8 +79,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Account created",
         description: "Your account has been created successfully!",
       });
-      
-      return result;
     } catch (error: any) {
       toast({
         title: "Error creating account",
@@ -92,14 +89,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function login(email: string, password: string) {
+  async function login(email: string, password: string): Promise<void> {
     try {
-      const result = await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, email, password);
       toast({
         title: "Logged in",
         description: "You have been logged in successfully!",
       });
-      return result;
     } catch (error: any) {
       toast({
         title: "Login failed",
@@ -110,21 +106,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function googleSignIn() {
+  async function googleSignIn(): Promise<void> {
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       
-      // Check if user exists in Firestore
       const userDoc = await getDoc(doc(db, "users", result.user.uid));
       
       if (!userDoc.exists()) {
-        // If new user, create profile but redirect to role selection
         await setDoc(doc(db, "users", result.user.uid), {
           email: result.user.email,
           displayName: result.user.displayName,
-          role: null, // Role will be selected later
-          coins: 100, // Starting coins
+          role: null,
+          coins: 100,
           createdAt: new Date().toISOString()
         });
         
@@ -133,7 +127,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: "Please select your role to continue",
         });
         
-        // Redirect to role selection page
         window.location.href = "/role-selection";
       } else {
         toast({
@@ -141,8 +134,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: "You have been logged in successfully!",
         });
       }
-      
-      return result;
     } catch (error: any) {
       toast({
         title: "Google sign-in failed",
@@ -153,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function logout() {
+  async function logout(): Promise<void> {
     try {
       await signOut(auth);
       toast({
