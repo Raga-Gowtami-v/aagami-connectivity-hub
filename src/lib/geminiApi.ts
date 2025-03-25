@@ -105,7 +105,14 @@ export const aiMentorChat = async (
   // In a real app, you would use the Gemini API for an AI mentor chatbot
   console.log(`AI Mentor responding to ${studentName} (Grade ${studentGrade})`);
   
-  const lastUserMessage = conversation.findLast(msg => msg.role === 'user')?.content || '';
+  // Find the last user message without using findLast
+  let lastUserMessage = '';
+  for (let i = conversation.length - 1; i >= 0; i--) {
+    if (conversation[i].role === 'user') {
+      lastUserMessage = conversation[i].content;
+      break;
+    }
+  }
   
   let response = '';
   if (subject) {

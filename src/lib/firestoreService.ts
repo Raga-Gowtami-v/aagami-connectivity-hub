@@ -12,7 +12,8 @@ import {
   orderBy, 
   limit,
   serverTimestamp,
-  DocumentData
+  DocumentData,
+  Query
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "./firebase";
@@ -85,7 +86,9 @@ export const queryCollection = async (
   limitTo?: number
 ) => {
   try {
-    let q = collection(db, collectionName);
+    let collectionRef = collection(db, collectionName);
+    // Initialize with basic query on the collection
+    let q: Query<DocumentData> = query(collectionRef);
     
     // Apply where conditions
     if (conditions.length > 0) {
