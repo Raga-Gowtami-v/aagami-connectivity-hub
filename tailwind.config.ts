@@ -63,7 +63,7 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				// Aagami earthy palette
+				
 				aagami: {
 					sage: '#8A9A5B',
 					terracotta: '#C87E61',
