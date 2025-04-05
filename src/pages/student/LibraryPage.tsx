@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -145,7 +146,7 @@ const LibraryPage = () => {
       author: "Dr. Rajan Mishra",
       subject: "Physics",
       grade: "10",
-      coverImage: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb",
+      coverUrl: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb",
       description: "A comprehensive introduction to physics concepts for 10th grade students.",
       pages: 248
     },
@@ -155,7 +156,7 @@ const LibraryPage = () => {
       author: "Prof. Anita Desai",
       subject: "Mathematics",
       grade: "9",
-      coverImage: "https://images.unsplash.com/photo-1509228468518-180dd4864904",
+      coverUrl: "https://images.unsplash.com/photo-1509228468518-180dd4864904",
       description: "Core mathematics concepts with practice problems for 9th grade students.",
       pages: 312
     },
@@ -165,7 +166,7 @@ const LibraryPage = () => {
       author: "Dr. Sanjay Gupta",
       subject: "Biology",
       grade: "11",
-      coverImage: "https://images.unsplash.com/photo-1530026186672-2cd00ffc50fe",
+      coverUrl: "https://images.unsplash.com/photo-1530026186672-2cd00ffc50fe",
       description: "Comprehensive coverage of biology for 11th grade students with detailed illustrations.",
       pages: 356
     },
@@ -175,7 +176,7 @@ const LibraryPage = () => {
       author: "Dr. Priya Sharma",
       subject: "Chemistry",
       grade: "10",
-      coverImage: "https://images.unsplash.com/photo-1603126857599-f6e157fa2fe6",
+      coverUrl: "https://images.unsplash.com/photo-1603126857599-f6e157fa2fe6",
       description: "Simplified approach to chemistry with experiments and examples.",
       pages: 284
     },
@@ -185,7 +186,7 @@ const LibraryPage = () => {
       author: "Prof. Rajiv Iyer",
       subject: "History",
       grade: "8",
-      coverImage: "https://images.unsplash.com/photo-1576872381149-7847515ce5d8",
+      coverUrl: "https://images.unsplash.com/photo-1576872381149-7847515ce5d8",
       description: "A detailed account of India's history from 1857 to independence.",
       pages: 326
     }
@@ -197,50 +198,55 @@ const LibraryPage = () => {
       title: "Physics Formula Sheet",
       type: "PDF",
       subject: "Physics",
-      uploadedBy: "Teacher",
-      uploadDate: "2023-05-15",
-      size: "2.4 MB",
-      downloads: 1245
+      author: "Teacher",
+      dateAdded: "2023-05-15",
+      fileSize: "2.4 MB",
+      downloads: 1245,
+      description: "Comprehensive formula sheet for physics exams"
     },
     {
       id: "doc2",
       title: "Mathematics Problem Set",
       type: "PDF",
       subject: "Mathematics",
-      uploadedBy: "Teacher",
-      uploadDate: "2023-06-22",
-      size: "3.1 MB",
-      downloads: 987
+      author: "Teacher",
+      dateAdded: "2023-06-22",
+      fileSize: "3.1 MB",
+      downloads: 987,
+      description: "Practice problems for algebra and calculus"
     },
     {
       id: "doc3",
       title: "Biology Lab Manual",
       type: "DOCX",
       subject: "Biology",
-      uploadedBy: "Admin",
-      uploadDate: "2023-04-10",
-      size: "5.7 MB",
-      downloads: 756
+      author: "Admin",
+      dateAdded: "2023-04-10",
+      fileSize: "5.7 MB",
+      downloads: 756,
+      description: "Step-by-step guide for biology lab experiments"
     },
     {
       id: "doc4",
       title: "Chemistry Periodic Table",
       type: "PDF",
       subject: "Chemistry",
-      uploadedBy: "Teacher",
-      uploadDate: "2023-07-05",
-      size: "1.2 MB",
-      downloads: 2134
+      author: "Teacher",
+      dateAdded: "2023-07-05",
+      fileSize: "1.2 MB",
+      downloads: 2134,
+      description: "Detailed periodic table with element properties"
     },
     {
       id: "doc5",
       title: "History Timeline Worksheet",
       type: "PDF",
       subject: "History",
-      uploadedBy: "Teacher",
-      uploadDate: "2023-08-18",
-      size: "1.8 MB",
-      downloads: 645
+      author: "Teacher",
+      dateAdded: "2023-08-18",
+      fileSize: "1.8 MB",
+      downloads: 645,
+      description: "Timeline worksheet covering major historical events"
     }
   ];
 
