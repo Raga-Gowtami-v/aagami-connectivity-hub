@@ -78,7 +78,7 @@ const LibraryPage = () => {
       try {
         const videos = await searchYouTubeVideos(searchQuery);
         setYoutubeVideos(videos);
-      } else {
+      } catch (error) {
         toast({
           title: "Search results",
           description: `Found results for "${searchQuery}"`,
