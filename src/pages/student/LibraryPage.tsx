@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { Search, BookOpen, Video, File, ArrowRight, Clock, ChevronDown, GraduationCap } from 'lucide-react';
+import { Search, BookOpen, Video, File, ArrowRight, Clock, ChevronDown, GraduationCap, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,7 +56,6 @@ const LibraryPage = () => {
   useEffect(() => {
     document.title = 'Library - Aagami';
     
-    // Load popular educational videos on initial load
     const fetchPopularVideos = async () => {
       try {
         const videos = await getPopularCourses("education");
@@ -87,8 +85,6 @@ const LibraryPage = () => {
         const videos = await searchYouTubeVideos(searchQuery);
         setYoutubeVideos(videos);
       } else {
-        // For textbooks and documents, we would typically call a backend API
-        // For now, we'll just show a success toast
         toast({
           title: "Search results",
           description: `Found results for "${searchQuery}"`,
@@ -116,7 +112,6 @@ const LibraryPage = () => {
 
   const translateTextbook = async (textbookId: string, content: string) => {
     if (selectedLanguage.code === "en") {
-      // Remove translation if switching back to English
       const newTranslatedContent = { ...translatedContent };
       delete newTranslatedContent[textbookId];
       setTranslatedContent(newTranslatedContent);
@@ -148,7 +143,6 @@ const LibraryPage = () => {
     }
   };
 
-  // Sample data for textbooks
   const textbooks: Textbook[] = [
     {
       id: "tb1",
@@ -202,7 +196,6 @@ const LibraryPage = () => {
     }
   ];
 
-  // Sample data for documents
   const documents: Document[] = [
     {
       id: "doc1",
@@ -256,7 +249,6 @@ const LibraryPage = () => {
     }
   ];
 
-  // Filters textbooks based on selected filters
   const filteredTextbooks = textbooks.filter(textbook => {
     const matchesSubject = !selectedSubject || textbook.subject === selectedSubject;
     const matchesGrade = !selectedGrade || textbook.grade === selectedGrade;
@@ -268,7 +260,6 @@ const LibraryPage = () => {
     return matchesSubject && matchesGrade && matchesSearch;
   });
 
-  // Filters documents based on selected filters
   const filteredDocuments = documents.filter(doc => {
     const matchesSubject = !selectedSubject || doc.subject === selectedSubject;
     const matchesSearch = !searchQuery || 

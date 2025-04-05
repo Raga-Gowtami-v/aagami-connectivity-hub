@@ -1,6 +1,6 @@
 
 import { useState, useRef } from 'react';
-import { Camera, Upload, QrCode, RefreshCw, Search, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Camera, Upload, QrCode, RefreshCw, Search, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -40,7 +40,7 @@ const ScanDonatePage = () => {
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target && typeof event.target.result === 'string') {
-          setImages(prev => [...prev, event.target.result]);
+          setImages(prev => [...prev, event.target.result as string]);
         }
       };
       reader.readAsDataURL(file);
