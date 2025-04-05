@@ -108,11 +108,11 @@ const StudentDashboard = () => {
               </li>
               <li>
                 <Link 
-                  to="/student-dashboard/chat" 
+                  to="/student-dashboard/ai-mentor" 
                   className="flex items-center px-4 py-3 text-gray-700 hover:bg-primary/10 hover:text-primary"
                 >
-                  <MessageSquare className="h-5 w-5 mr-3" />
-                  Chat Box
+                  <Bot className="h-5 w-5 mr-3" />
+                  AI Mentor
                 </Link>
               </li>
               <li>
@@ -230,10 +230,10 @@ const StudentDashboard = () => {
             />
             
             <DashboardCard
-              title="Connect with Mentor"
-              description="Schedule sessions with experienced mentors"
-              icon={<Users className="h-6 w-6 text-aagami-blue" />}
-              to="/student-dashboard/connect-mentor"
+              title="Virtual Lab"
+              description="Perform interactive virtual experiments with guidance"
+              icon={<Beaker className="h-6 w-6 text-aagami-blue" />}
+              to="/student-dashboard/virtual-lab"
               color="bg-aagami-blue"
             />
           </div>

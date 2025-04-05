@@ -20,6 +20,7 @@ import LibraryPage from "./pages/student/LibraryPage";
 import PracticePage from "./pages/student/PracticePage";
 import AIMentorPage from "./pages/student/AIMentorPage";
 import CertificationPage from "./pages/student/CertificationPage";
+import VirtualLabPage from "./pages/student/VirtualLabPage";
 
 // Pathguider pages
 import ReportEWastePage from "./pages/pathguider/ReportEWastePage";
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="/student-dashboard/practice" element={<PracticePage />} />
             <Route path="/student-dashboard/ai-mentor" element={<AIMentorPage />} />
             <Route path="/student-dashboard/certification" element={<CertificationPage />} />
+            <Route path="/student-dashboard/virtual-lab" element={<VirtualLabPage />} />
             <Route path="/student-dashboard/*" element={<StudentDashboard />} />
             
             {/* Pathguider Routes */}
