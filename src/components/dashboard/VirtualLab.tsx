@@ -47,7 +47,7 @@ const VirtualLab = () => {
     ],
     physics: [
       'Simple Pendulum',
-      'Ohm's Law Circuit',
+      'Ohm\'s Law Circuit',
       'Light Reflection and Refraction',
       'Magnetic Field Mapping',
     ],
