@@ -1,192 +1,146 @@
 
-import { useState, useEffect } from "react";
-import { 
-  Search, 
-  BookOpen, 
-  Video, 
-  FileText, 
-  Download, 
-  Bookmark, 
-  Filter, 
-  Languages, 
-  AlertCircle 
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
-import { translateText } from "@/lib/googleApis";
-import { recommendLearningPath } from "@/lib/geminiApi";
-import { queryCollection } from "@/lib/firestoreService";
+import { useState, useEffect } from 'react';
+import { Search, BookOpen, Video, File, ArrowRight, Clock, ChevronDown, GraduationCap } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
+import { toast } from '@/hooks/use-toast';
+import { searchYouTubeVideos, getPopularCourses, YouTubeVideo } from '@/lib/youtubeApi';
+import { translateText, getSupportedLanguages, SupportedLanguage } from '@/lib/translationApi';
+import BackButton from '@/components/shared/BackButton';
 
-// Sample data - in a real app this would come from Firestore
-const RESOURCES = [
-  {
-    id: "1",
-    title: "Introduction to Algebra",
-    type: "document",
-    subject: "Mathematics",
-    level: "Beginner",
-    format: "PDF",
-    description: "A comprehensive introduction to algebra concepts with practice problems.",
-    url: "#",
-    thumbnail: "https://images.unsplash.com/photo-1635372722656-389f87a941db?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-    tags: ["algebra", "mathematics", "beginner"]
-  },
-  {
-    id: "2",
-    title: "Cell Biology Explained",
-    type: "video",
-    subject: "Biology",
-    level: "Intermediate",
-    format: "MP4",
-    description: "Video explaining cell structure, function and division processes.",
-    url: "#",
-    thumbnail: "https://images.unsplash.com/photo-1576086213369-97a306d36557?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-    tags: ["biology", "cells", "science"]
-  },
-  {
-    id: "3",
-    title: "Newton's Laws of Motion",
-    type: "document",
-    subject: "Physics",
-    level: "Intermediate",
-    format: "PDF",
-    description: "Detailed explanation of Newton's three laws of motion with examples.",
-    url: "#",
-    thumbnail: "https://images.unsplash.com/photo-1636466497217-26a8cbeaf0aa?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-    tags: ["physics", "mechanics", "newton"]
-  },
-  {
-    id: "4",
-    title: "Chemical Bonding Tutorial",
-    type: "video",
-    subject: "Chemistry",
-    level: "Advanced",
-    format: "MP4",
-    description: "Comprehensive tutorial on different types of chemical bonds.",
-    url: "#",
-    thumbnail: "https://images.unsplash.com/photo-1603126857599-f6e157fa2fe6?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-    tags: ["chemistry", "bonding", "tutorial"]
-  },
-  {
-    id: "5",
-    title: "World History: Ancient Civilizations",
-    type: "document",
-    subject: "History",
-    level: "Beginner",
-    format: "PDF",
-    description: "Overview of major ancient civilizations and their contributions.",
-    url: "#",
-    thumbnail: "https://images.unsplash.com/photo-1519791883288-dc8bd696e667?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-    tags: ["history", "ancient", "civilizations"]
-  },
-  {
-    id: "6",
-    title: "Python Programming Basics",
-    type: "interactive",
-    subject: "Computer Science",
-    level: "Beginner",
-    format: "HTML",
-    description: "Interactive tutorial on Python programming fundamentals.",
-    url: "#",
-    thumbnail: "https://images.unsplash.com/photo-1526379879527-8559ecfcaec0?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-    tags: ["programming", "python", "computer science"]
-  }
-];
+interface Textbook {
+  id: string;
+  title: string;
+  author: string;
+  subject: string;
+  grade: string;
+  coverImage: string;
+  description: string;
+  pages: number;
+}
+
+interface Document {
+  id: string;
+  title: string;
+  type: string;
+  subject: string;
+  uploadedBy: string;
+  uploadDate: string;
+  size: string;
+  downloads: number;
+}
 
 const LibraryPage = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState("all");
-  const [selectedLevel, setSelectedLevel] = useState("all");
-  const [selectedType, setSelectedType] = useState("all");
-  const [resources, setResources] = useState(RESOURCES);
-  const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
-  const [translatedContent, setTranslatedContent] = useState<{[key: string]: string}>({});
-  const [selectedLanguage, setSelectedLanguage] = useState("original");
+  const [activeTab, setActiveTab] = useState('textbooks');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
+  const [youtubeVideos, setYoutubeVideos] = useState<YouTubeVideo[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>({ code: "en", name: "English", nativeName: "English" });
   const [isTranslating, setIsTranslating] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [personalizedPath, setPersonalizedPath] = useState<any>(null);
+  const [translatedContent, setTranslatedContent] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    // In a real app, we would fetch resources from Firestore
-    const fetchResources = async () => {
-      setIsLoading(true);
+    document.title = 'Library - Aagami';
+    
+    // Load popular educational videos on initial load
+    const fetchPopularVideos = async () => {
       try {
-        // This would be replaced with actual Firestore query
-        // const data = await queryCollection("learningResources");
-        // setResources(data);
-        
-        // Also fetch user's bookmarks
-        // const bookmarkData = await queryCollection("bookmarks", [{ field: "userId", operator: "==", value: userId }]);
-        // setBookmarkedIds(bookmarkData.map(item => item.resourceId));
-        
-        // Using sample data for demo
-        setResources(RESOURCES);
-        setBookmarkedIds(["1", "4"]); // Sample bookmarked items
+        const videos = await getPopularCourses("education");
+        setYoutubeVideos(videos);
       } catch (error) {
-        console.error("Error fetching resources:", error);
-        toast({
-          title: "Error loading resources",
-          description: "Failed to load resources. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
+        console.error("Error fetching popular videos:", error);
       }
     };
-
-    fetchResources();
+    
+    fetchPopularVideos();
   }, []);
 
-  useEffect(() => {
-    // Generate AI personalized learning path - in a real app this would use Gemini API
-    const generatePersonalizedPath = async () => {
-      try {
-        const path = await recommendLearningPath(
-          "Student", 
-          ["mathematics", "science"], 
-          ["basic algebra", "physics fundamentals"], 
-          ["improve academic performance", "prepare for exams"]
-        );
-        setPersonalizedPath(path);
-      } catch (error) {
-        console.error("Error generating learning path:", error);
-      }
-    };
-
-    generatePersonalizedPath();
-  }, []);
-
-  const handleTranslate = async (id: string, content: string) => {
-    if (selectedLanguage === "original") {
-      setTranslatedContent({});
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      toast({
+        title: "Search query required",
+        description: "Please enter a search term",
+        variant: "destructive"
+      });
       return;
     }
     
-    if (translatedContent[id]) return;
+    setIsSearching(true);
+    
+    try {
+      if (activeTab === 'videos') {
+        const videos = await searchYouTubeVideos(searchQuery);
+        setYoutubeVideos(videos);
+      } else {
+        // For textbooks and documents, we would typically call a backend API
+        // For now, we'll just show a success toast
+        toast({
+          title: "Search results",
+          description: `Found results for "${searchQuery}"`,
+        });
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+      toast({
+        title: "Search failed",
+        description: "An error occurred while searching. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSubjectFilter = (subject: string | null) => {
+    setSelectedSubject(subject);
+  };
+
+  const handleGradeFilter = (grade: string | null) => {
+    setSelectedGrade(grade);
+  };
+
+  const translateTextbook = async (textbookId: string, content: string) => {
+    if (selectedLanguage.code === "en") {
+      // Remove translation if switching back to English
+      const newTranslatedContent = { ...translatedContent };
+      delete newTranslatedContent[textbookId];
+      setTranslatedContent(newTranslatedContent);
+      return;
+    }
     
     setIsTranslating(true);
+    
     try {
-      const translated = await translateText(content, selectedLanguage);
-      setTranslatedContent(prev => ({
-        ...prev,
-        [id]: translated
-      }));
+      const translated = await translateText(content, selectedLanguage.code);
+      setTranslatedContent({
+        ...translatedContent,
+        [textbookId]: translated
+      });
+      
+      toast({
+        title: "Translation complete",
+        description: `Translated to ${selectedLanguage.name}`,
+      });
     } catch (error) {
       console.error("Translation error:", error);
       toast({
         title: "Translation failed",
-        description: "Failed to translate content. Please try again.",
+        description: "Failed to translate the content. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -194,360 +148,538 @@ const LibraryPage = () => {
     }
   };
 
-  const toggleBookmark = (id: string) => {
-    if (bookmarkedIds.includes(id)) {
-      setBookmarkedIds(bookmarkedIds.filter(bookmarkId => bookmarkId !== id));
-      toast({
-        title: "Bookmark removed",
-        description: "Resource removed from your bookmarks",
-      });
-      // In a real app: remove from Firestore
-    } else {
-      setBookmarkedIds([...bookmarkedIds, id]);
-      toast({
-        title: "Bookmark added",
-        description: "Resource added to your bookmarks",
-      });
-      // In a real app: add to Firestore
+  // Sample data for textbooks
+  const textbooks: Textbook[] = [
+    {
+      id: "tb1",
+      title: "Introduction to Physics",
+      author: "Dr. Rajan Mishra",
+      subject: "Physics",
+      grade: "10",
+      coverImage: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb",
+      description: "A comprehensive introduction to physics concepts for 10th grade students.",
+      pages: 248
+    },
+    {
+      id: "tb2",
+      title: "Mathematics Fundamentals",
+      author: "Prof. Anita Desai",
+      subject: "Mathematics",
+      grade: "9",
+      coverImage: "https://images.unsplash.com/photo-1509228468518-180dd4864904",
+      description: "Core mathematics concepts with practice problems for 9th grade students.",
+      pages: 312
+    },
+    {
+      id: "tb3",
+      title: "Biology Essentials",
+      author: "Dr. Sanjay Gupta",
+      subject: "Biology",
+      grade: "11",
+      coverImage: "https://images.unsplash.com/photo-1530026186672-2cd00ffc50fe",
+      description: "Comprehensive coverage of biology for 11th grade students with detailed illustrations.",
+      pages: 356
+    },
+    {
+      id: "tb4",
+      title: "Chemistry Made Simple",
+      author: "Dr. Priya Sharma",
+      subject: "Chemistry",
+      grade: "10",
+      coverImage: "https://images.unsplash.com/photo-1603126857599-f6e157fa2fe6",
+      description: "Simplified approach to chemistry with experiments and examples.",
+      pages: 284
+    },
+    {
+      id: "tb5",
+      title: "History of Modern India",
+      author: "Prof. Rajiv Iyer",
+      subject: "History",
+      grade: "8",
+      coverImage: "https://images.unsplash.com/photo-1576872381149-7847515ce5d8",
+      description: "A detailed account of India's history from 1857 to independence.",
+      pages: 326
     }
-  };
+  ];
 
-  const handleDownload = (resource: any) => {
-    toast({
-      title: "Download started",
-      description: `Downloading ${resource.title}...`,
-    });
-    // In a real app, this would actually download the file
-  };
+  // Sample data for documents
+  const documents: Document[] = [
+    {
+      id: "doc1",
+      title: "Physics Formula Sheet",
+      type: "PDF",
+      subject: "Physics",
+      uploadedBy: "Teacher",
+      uploadDate: "2023-05-15",
+      size: "2.4 MB",
+      downloads: 1245
+    },
+    {
+      id: "doc2",
+      title: "Mathematics Problem Set",
+      type: "PDF",
+      subject: "Mathematics",
+      uploadedBy: "Teacher",
+      uploadDate: "2023-06-22",
+      size: "3.1 MB",
+      downloads: 987
+    },
+    {
+      id: "doc3",
+      title: "Biology Lab Manual",
+      type: "DOCX",
+      subject: "Biology",
+      uploadedBy: "Admin",
+      uploadDate: "2023-04-10",
+      size: "5.7 MB",
+      downloads: 756
+    },
+    {
+      id: "doc4",
+      title: "Chemistry Periodic Table",
+      type: "PDF",
+      subject: "Chemistry",
+      uploadedBy: "Teacher",
+      uploadDate: "2023-07-05",
+      size: "1.2 MB",
+      downloads: 2134
+    },
+    {
+      id: "doc5",
+      title: "History Timeline Worksheet",
+      type: "PDF",
+      subject: "History",
+      uploadedBy: "Teacher",
+      uploadDate: "2023-08-18",
+      size: "1.8 MB",
+      downloads: 645
+    }
+  ];
 
-  const filteredResources = resources.filter(resource => {
-    const matchesSearch = resource.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         resource.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         resource.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
-                         
-    const matchesSubject = selectedSubject === "all" || resource.subject.toLowerCase() === selectedSubject.toLowerCase();
-    const matchesLevel = selectedLevel === "all" || resource.level.toLowerCase() === selectedLevel.toLowerCase();
-    const matchesType = selectedType === "all" || resource.type.toLowerCase() === selectedType.toLowerCase();
+  // Filters textbooks based on selected filters
+  const filteredTextbooks = textbooks.filter(textbook => {
+    const matchesSubject = !selectedSubject || textbook.subject === selectedSubject;
+    const matchesGrade = !selectedGrade || textbook.grade === selectedGrade;
+    const matchesSearch = !searchQuery || 
+      textbook.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      textbook.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      textbook.subject.toLowerCase().includes(searchQuery.toLowerCase());
     
-    return matchesSearch && matchesSubject && matchesLevel && matchesType;
+    return matchesSubject && matchesGrade && matchesSearch;
   });
 
-  const bookmarkedResources = resources.filter(resource => bookmarkedIds.includes(resource.id));
+  // Filters documents based on selected filters
+  const filteredDocuments = documents.filter(doc => {
+    const matchesSubject = !selectedSubject || doc.subject === selectedSubject;
+    const matchesSearch = !searchQuery || 
+      doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doc.subject.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    return matchesSubject && matchesSearch;
+  });
+
+  const subjects = ["Physics", "Mathematics", "Biology", "Chemistry", "History", "Geography", "Computer Science"];
+  const grades = ["6", "7", "8", "9", "10", "11", "12"];
+  const languages = getSupportedLanguages();
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-2">Learning Library</h1>
-      <p className="text-gray-600 mb-8">
-        Explore our collection of educational resources to enhance your learning journey
-      </p>
-
-      {/* Search and Filters */}
-      <div className="mb-8 bg-white p-4 rounded-lg shadow-md">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-grow">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search resources..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+    <div className="min-h-screen bg-background">
+      <header className="bg-white shadow-sm">
+        <div className="container px-4 py-4 mx-auto">
+          <div className="flex items-center">
+            <BackButton to="/student-dashboard" />
+            <h1 className="text-xl font-medium ml-2">Library</h1>
+          </div>
+        </div>
+      </header>
+      
+      <main className="container mx-auto px-4 py-6">
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Search for textbooks, videos, or documents..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              />
+            </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Subject" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Subjects</SelectItem>
-                <SelectItem value="mathematics">Mathematics</SelectItem>
-                <SelectItem value="biology">Biology</SelectItem>
-                <SelectItem value="physics">Physics</SelectItem>
-                <SelectItem value="chemistry">Chemistry</SelectItem>
-                <SelectItem value="history">History</SelectItem>
-                <SelectItem value="computer science">Computer Science</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full md:w-auto">
+                  Subject
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuLabel>Filter by Subject</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleSubjectFilter(null)}>
+                  All Subjects
+                </DropdownMenuItem>
+                {subjects.map((subject) => (
+                  <DropdownMenuItem key={subject} onClick={() => handleSubjectFilter(subject)}>
+                    {subject}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             
-            <Select value={selectedLevel} onValueChange={setSelectedLevel}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Level" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Levels</SelectItem>
-                <SelectItem value="beginner">Beginner</SelectItem>
-                <SelectItem value="intermediate">Intermediate</SelectItem>
-                <SelectItem value="advanced">Advanced</SelectItem>
-              </SelectContent>
-            </Select>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full md:w-auto">
+                  Grade
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuLabel>Filter by Grade</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleGradeFilter(null)}>
+                  All Grades
+                </DropdownMenuItem>
+                {grades.map((grade) => (
+                  <DropdownMenuItem key={grade} onClick={() => handleGradeFilter(grade)}>
+                    Grade {grade}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             
-            <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Resource Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="document">Documents</SelectItem>
-                <SelectItem value="video">Videos</SelectItem>
-                <SelectItem value="interactive">Interactive</SelectItem>
-              </SelectContent>
-            </Select>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full md:w-auto">
+                  {selectedLanguage.nativeName}
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuLabel>Select Language</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {languages.map((language) => (
+                  <DropdownMenuItem 
+                    key={language.code} 
+                    onClick={() => setSelectedLanguage(language)}
+                  >
+                    {language.nativeName} ({language.name})
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <Button onClick={handleSearch} disabled={isSearching}>
+              {isSearching ? "Searching..." : "Search"}
+            </Button>
           </div>
         </div>
-      </div>
-
-      {/* Personalized Learning Path Card */}
-      {personalizedPath && (
-        <div className="mb-8">
-          <Card className="bg-gradient-to-r from-aagami-blue/20 to-aagami-sage/20 border-none">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <BookOpen className="mr-2 h-5 w-5" />
-                Your Personalized Learning Path
-              </CardTitle>
-              <CardDescription>
-                AI-generated learning path based on your interests and goals
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="mb-4 text-sm">{personalizedPath.description}</p>
-              <div className="space-y-4">
-                {personalizedPath.steps.map((step: any, index: number) => (
-                  <div key={index} className="bg-white rounded-md p-3 shadow-sm">
-                    <h4 className="font-medium text-aagami-blue mb-2">{index + 1}. {step.title}</h4>
-                    <div className="space-y-2">
-                      {step.resources.map((resource: any, resIndex: number) => (
-                        <div key={resIndex} className="flex justify-between items-center text-sm">
-                          <span>{resource.name}</span>
-                          <Badge variant="outline" className="text-xs">
-                            {resource.type} • {resource.duration || `${resource.pages} pages`}
-                          </Badge>
-                        </div>
-                      ))}
+        
+        <div className="flex items-center space-x-2 mb-4">
+          {selectedSubject && (
+            <Badge 
+              variant="secondary" 
+              className="flex items-center"
+              onClick={() => handleSubjectFilter(null)}
+            >
+              Subject: {selectedSubject}
+              <X className="ml-1 h-3 w-3 cursor-pointer" />
+            </Badge>
+          )}
+          
+          {selectedGrade && (
+            <Badge 
+              variant="secondary" 
+              className="flex items-center"
+              onClick={() => handleGradeFilter(null)}
+            >
+              Grade: {selectedGrade}
+              <X className="ml-1 h-3 w-3 cursor-pointer" />
+            </Badge>
+          )}
+          
+          {selectedLanguage.code !== "en" && (
+            <Badge 
+              variant="secondary" 
+              className="flex items-center"
+            >
+              Language: {selectedLanguage.name}
+            </Badge>
+          )}
+        </div>
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="textbooks">
+              <BookOpen className="mr-2 h-4 w-4" />
+              Textbooks
+            </TabsTrigger>
+            <TabsTrigger value="videos">
+              <Video className="mr-2 h-4 w-4" />
+              Videos
+            </TabsTrigger>
+            <TabsTrigger value="documents">
+              <File className="mr-2 h-4 w-4" />
+              Documents
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="textbooks" className="space-y-6">
+            {filteredTextbooks.length === 0 ? (
+              <div className="text-center py-12">
+                <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-4 text-lg font-medium">No textbooks found</h3>
+                <p className="text-gray-500">Try adjusting your search or filters</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredTextbooks.map((textbook) => (
+                  <Card key={textbook.id} className="overflow-hidden hover-lift">
+                    <div className="aspect-[4/3] relative">
+                      <img 
+                        src={textbook.coverImage} 
+                        alt={textbook.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute top-2 right-2">
+                        <Badge>{textbook.subject}</Badge>
+                      </div>
+                      <div className="absolute bottom-2 left-2">
+                        <Badge variant="outline" className="bg-white/80">
+                          Grade {textbook.grade}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
+                    <CardHeader>
+                      <CardTitle>{textbook.title}</CardTitle>
+                      <p className="text-sm text-gray-500">{textbook.author}</p>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm">
+                        {translatedContent[textbook.id] || textbook.description}
+                      </p>
+                      <div className="flex items-center mt-4 text-sm text-gray-500">
+                        <BookOpen className="h-4 w-4 mr-1" />
+                        <span>{textbook.pages} pages</span>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-between border-t pt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => translateTextbook(textbook.id, textbook.description)}
+                        disabled={isTranslating}
+                      >
+                        {isTranslating ? "Translating..." : (
+                          translatedContent[textbook.id] ? "Show Original" : "Translate"
+                        )}
+                      </Button>
+                      <Button>
+                        Read Now
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </CardFooter>
+                  </Card>
                 ))}
               </div>
-            </CardContent>
-            <CardFooter>
-              <Button className="bg-aagami-blue hover:bg-aagami-blue/90">
-                Start Learning Path
+            )}
+          </TabsContent>
+          
+          <TabsContent value="videos" className="space-y-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Educational Videos</h2>
+              <p className="text-sm text-gray-500">Showing {youtubeVideos.length} results</p>
+            </div>
+            
+            {youtubeVideos.length === 0 ? (
+              <div className="text-center py-12">
+                <Video className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-4 text-lg font-medium">No videos found</h3>
+                <p className="text-gray-500">Try searching for a different topic</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {youtubeVideos.map((video) => (
+                  <Card key={video.id} className="overflow-hidden">
+                    <div className="flex flex-col md:flex-row">
+                      <div className="md:w-64 flex-shrink-0">
+                        <img 
+                          src={video.thumbnail} 
+                          alt={video.title}
+                          className="w-full h-48 md:h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex flex-col flex-1">
+                        <CardHeader>
+                          <CardTitle className="line-clamp-2">{video.title}</CardTitle>
+                          <div className="flex justify-between items-center">
+                            <p className="text-sm text-gray-500">{video.channelTitle}</p>
+                            <Badge variant="outline" className="ml-2">
+                              <Clock className="mr-1 h-3 w-3" />
+                              {video.duration}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm line-clamp-2">{video.description}</p>
+                          <div className="flex items-center mt-4 text-sm text-gray-500">
+                            <GraduationCap className="h-4 w-4 mr-1" />
+                            <span>{video.viewCount} views</span>
+                          </div>
+                        </CardContent>
+                        <CardFooter className="mt-auto border-t pt-4">
+                          <a 
+                            href={`https://www.youtube.com/watch?v=${video.id}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="w-full"
+                          >
+                            <Button className="w-full">
+                              Watch on YouTube
+                              <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                          </a>
+                        </CardFooter>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="documents" className="space-y-6">
+            {filteredDocuments.length === 0 ? (
+              <div className="text-center py-12">
+                <File className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-4 text-lg font-medium">No documents found</h3>
+                <p className="text-gray-500">Try adjusting your search or filters</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredDocuments.map((document) => (
+                  <Card key={document.id} className="overflow-hidden">
+                    <div className="flex items-center p-4">
+                      <div className="bg-primary/10 p-3 rounded-full mr-4">
+                        <File className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-medium">{document.title}</h3>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          <Badge variant="outline">{document.type}</Badge>
+                          <Badge variant="outline">{document.subject}</Badge>
+                          <span className="text-xs text-gray-500">{document.size}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Uploaded: {document.uploadDate}</p>
+                        <p className="text-xs text-gray-500">{document.downloads} downloads</p>
+                      </div>
+                      <Button className="ml-4">
+                        Download
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+        
+        <div className="mt-8">
+          <Separator className="my-4" />
+          <h2 className="text-xl font-semibold mb-4">Popular Courses</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="overflow-hidden hover-lift">
+              <div className="aspect-video relative">
+                <img 
+                  src="https://images.unsplash.com/photo-1542831371-29b0f74f9713" 
+                  alt="Web Development Course"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
+                  <h3 className="text-white font-medium">Web Development Bootcamp</h3>
+                  <p className="text-white/80 text-sm">Complete HTML, CSS, JavaScript</p>
+                </div>
+              </div>
+              <CardContent className="py-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-green-600">Free</span>
+                  <Badge variant="outline">24 lessons</Badge>
+                </div>
+              </CardContent>
+              <CardFooter className="border-t pt-4">
+                <Button variant="outline" className="w-full">
+                  Start Learning
+                </Button>
+              </CardFooter>
+            </Card>
+            
+            <Card className="overflow-hidden hover-lift">
+              <div className="aspect-video relative">
+                <img 
+                  src="https://images.unsplash.com/photo-1580894732444-8ecded7900cd" 
+                  alt="Data Science Course"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
+                  <h3 className="text-white font-medium">Data Science Fundamentals</h3>
+                  <p className="text-white/80 text-sm">Python, Statistics, Visualization</p>
+                </div>
+              </div>
+              <CardContent className="py-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-green-600">Free</span>
+                  <Badge variant="outline">18 lessons</Badge>
+                </div>
+              </CardContent>
+              <CardFooter className="border-t pt-4">
+                <Button variant="outline" className="w-full">
+                  Start Learning
+                </Button>
+              </CardFooter>
+            </Card>
+            
+            <Card className="overflow-hidden hover-lift">
+              <div className="aspect-video relative">
+                <img 
+                  src="https://images.unsplash.com/photo-1509966756634-9c23dd6e6815" 
+                  alt="Mobile App Development"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
+                  <h3 className="text-white font-medium">Mobile App Development</h3>
+                  <p className="text-white/80 text-sm">React Native, Flutter, UI Design</p>
+                </div>
+              </div>
+              <CardContent className="py-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-green-600">Free</span>
+                  <Badge variant="outline">16 lessons</Badge>
+                </div>
+              </CardContent>
+              <CardFooter className="border-t pt-4">
+                <Button variant="outline" className="w-full">
+                  Start Learning
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+          
+          <div className="mt-6 text-center">
+            <Link to="/student-dashboard/learn-earn">
+              <Button variant="link" className="text-primary">
+                View All Courses
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-            </CardFooter>
-          </Card>
+            </Link>
+          </div>
         </div>
-      )}
-
-      {/* Library Content */}
-      <Tabs defaultValue="all" className="mb-6">
-        <TabsList>
-          <TabsTrigger value="all" className="flex items-center">
-            <BookOpen className="mr-2 h-4 w-4" />
-            All Resources
-          </TabsTrigger>
-          <TabsTrigger value="bookmarked" className="flex items-center">
-            <Bookmark className="mr-2 h-4 w-4" />
-            Bookmarked
-          </TabsTrigger>
-        </TabsList>
-        
-        {/* Language Selector */}
-        <div className="flex justify-end mb-4 mt-4">
-          <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select Language" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="original">Original</SelectItem>
-              <SelectItem value="hi">Hindi</SelectItem>
-              <SelectItem value="es">Spanish</SelectItem>
-              <SelectItem value="fr">French</SelectItem>
-              <SelectItem value="de">German</SelectItem>
-              <SelectItem value="ja">Japanese</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <TabsContent value="all">
-          {isLoading ? (
-            <div className="text-center py-12">
-              <p>Loading resources...</p>
-            </div>
-          ) : filteredResources.length === 0 ? (
-            <div className="text-center py-12">
-              <AlertCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium">No resources found</h3>
-              <p className="text-gray-500">Try adjusting your search or filters</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredResources.map((resource) => (
-                <ResourceCard 
-                  key={resource.id}
-                  resource={resource}
-                  isBookmarked={bookmarkedIds.includes(resource.id)}
-                  toggleBookmark={toggleBookmark}
-                  handleDownload={handleDownload}
-                  translatedContent={translatedContent[resource.id]}
-                  handleTranslate={handleTranslate}
-                  isTranslating={isTranslating}
-                  selectedLanguage={selectedLanguage}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-        
-        <TabsContent value="bookmarked">
-          {bookmarkedResources.length === 0 ? (
-            <div className="text-center py-12">
-              <Bookmark className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium">No bookmarks yet</h3>
-              <p className="text-gray-500">Bookmark resources to access them quickly later</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {bookmarkedResources.map((resource) => (
-                <ResourceCard 
-                  key={resource.id}
-                  resource={resource}
-                  isBookmarked={true}
-                  toggleBookmark={toggleBookmark}
-                  handleDownload={handleDownload}
-                  translatedContent={translatedContent[resource.id]}
-                  handleTranslate={handleTranslate}
-                  isTranslating={isTranslating}
-                  selectedLanguage={selectedLanguage}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+      </main>
     </div>
-  );
-};
-
-interface ResourceCardProps {
-  resource: any;
-  isBookmarked: boolean;
-  toggleBookmark: (id: string) => void;
-  handleDownload: (resource: any) => void;
-  translatedContent?: string;
-  handleTranslate: (id: string, content: string) => void;
-  isTranslating: boolean;
-  selectedLanguage: string;
-}
-
-const ResourceCard = ({ 
-  resource, 
-  isBookmarked, 
-  toggleBookmark, 
-  handleDownload,
-  translatedContent,
-  handleTranslate,
-  isTranslating,
-  selectedLanguage
-}: ResourceCardProps) => {
-  const { id, title, type, subject, level, description, thumbnail } = resource;
-  
-  const getTypeIcon = () => {
-    switch (type) {
-      case 'document':
-        return <FileText className="h-5 w-5" />;
-      case 'video':
-        return <Video className="h-5 w-5" />;
-      default:
-        return <BookOpen className="h-5 w-5" />;
-    }
-  };
-
-  useEffect(() => {
-    if (selectedLanguage !== "original" && !translatedContent) {
-      handleTranslate(id, description);
-    }
-  }, [selectedLanguage, id, description, translatedContent]);
-
-  return (
-    <Card className="overflow-hidden transition-all hover:shadow-md">
-      <div className="aspect-video relative overflow-hidden">
-        <img 
-          src={thumbnail} 
-          alt={title} 
-          className="h-full w-full object-cover"
-        />
-        <div className="absolute top-2 right-2 flex gap-2">
-          <Button 
-            variant="secondary" 
-            size="icon" 
-            className="h-8 w-8 rounded-full bg-white/80 hover:bg-white"
-            onClick={() => toggleBookmark(id)}
-          >
-            <Bookmark 
-              className={`h-4 w-4 ${isBookmarked ? "fill-aagami-gold text-aagami-gold" : "text-gray-600"}`} 
-            />
-          </Button>
-        </div>
-        <div className="absolute bottom-2 left-2">
-          <Badge className={`
-            ${type === 'document' ? 'bg-aagami-blue/80' : 
-             type === 'video' ? 'bg-aagami-terracotta/80' : 
-             'bg-aagami-sage/80'} 
-            text-white
-          `}>
-            <span className="flex items-center">
-              {getTypeIcon()}
-              <span className="ml-1 capitalize">{type}</span>
-            </span>
-          </Badge>
-        </div>
-      </div>
-      
-      <CardHeader>
-        <CardTitle className="text-lg line-clamp-1">{title}</CardTitle>
-        <CardDescription className="flex flex-wrap gap-2">
-          <Badge variant="outline">{subject}</Badge>
-          <Badge variant="outline">{level}</Badge>
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent>
-        <p className="text-sm text-gray-600 line-clamp-3">
-          {selectedLanguage !== "original" && translatedContent ? 
-            translatedContent : 
-            description
-          }
-          {selectedLanguage !== "original" && !translatedContent && isTranslating && (
-            <span className="italic text-gray-400"> (Translating...)</span>
-          )}
-        </p>
-      </CardContent>
-      
-      <CardFooter className="flex justify-between">
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => handleDownload(resource)}
-          className="flex items-center"
-        >
-          <Download className="mr-1 h-4 w-4" />
-          Download
-        </Button>
-        
-        {selectedLanguage !== "original" && !translatedContent && !isTranslating && (
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => handleTranslate(id, description)}
-            className="flex items-center"
-          >
-            <Languages className="mr-1 h-4 w-4" />
-            Translate
-          </Button>
-        )}
-      </CardFooter>
-    </Card>
   );
 };
 

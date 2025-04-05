@@ -1,166 +1,210 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { ArrowRight, Mail, Lock, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [role, setRole] = useState<"student" | "teacher" | "pathguider" | null>("student");
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-
+  const { login, googleSignIn } = useAuth();
+  
   useEffect(() => {
     document.title = 'Login - Aagami';
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
     if (!email || !password) {
-      toast({
-        title: "Error",
-        description: "Please enter both email and password",
-        variant: "destructive",
-      });
+      setError('Please fill in all fields');
       return;
     }
     
-    setIsLoading(true);
-    
-    // Simulate login
-    setTimeout(() => {
+    try {
+      setIsLoading(true);
+      await login(email, password);
+      
+      // Redirect based on selected role
+      if (role === "student") {
+        navigate('/student-dashboard');
+      } else if (role === "teacher") {
+        navigate('/teacher-dashboard');
+      } else if (role === "pathguider") {
+        navigate('/pathguider-dashboard');
+      }
+    } catch (error: any) {
+      setError(error.message || 'Failed to login');
+    } finally {
       setIsLoading(false);
-      // In a real app, we would handle actual authentication here
-      toast({
-        title: "Success",
-        description: "You've been logged in successfully",
-      });
-      navigate('/student-dashboard');
-    }, 1500);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true);
+      await googleSignIn();
+      // Redirect based on selected role after Google sign-in
+      if (role === "student") {
+        navigate('/student-dashboard');
+      } else if (role === "teacher") {
+        navigate('/teacher-dashboard');
+      } else if (role === "pathguider") {
+        navigate('/pathguider-dashboard');
+      }
+    } catch (error: any) {
+      setError(error.message || 'Failed to sign in with Google');
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left side - Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center p-8 md:p-16">
-        <div className="max-w-md w-full mx-auto">
-          <Link 
-            to="/" 
-            className="inline-flex items-center text-sm text-gray-600 hover:text-primary mb-8 transition-colors"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to home
-          </Link>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">Welcome back</CardTitle>
+          <CardDescription className="text-center">
+            Enter your credentials to login to your account
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           
-          <div className="mb-8">
-            <Link to="/" className="inline-block mb-6">
-              <span className="text-3xl font-serif font-bold bg-gradient-to-r from-aagami-sage to-aagami-blue bg-clip-text text-transparent">
-                Aagami
-              </span>
-            </Link>
-            <h1 className="text-3xl font-bold mb-2">Welcome back</h1>
-            <p className="text-gray-600">Sign in to continue to your dashboard</p>
-          </div>
-          
-          <form onSubmit={handleLogin}>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email address
-                </label>
-                <input
-                  id="email"
-                  type="email"
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  id="email" 
+                  type="email" 
+                  placeholder="m@example.com" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                  placeholder="you@example.com"
-                  required
+                  className="pl-10"
+                  disabled={isLoading}
                 />
               </div>
-              
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                    Password
-                  </label>
-                  <Link to="/forgot-password" className="text-sm text-primary hover:text-primary/80 transition-colors">
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                    placeholder="••••••••"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                  Remember me
-                </label>
-              </div>
-              
-              <button
-                type="submit"
-                className="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-medium transition-colors"
-                disabled={isLoading}
-              >
-                {isLoading ? "Signing in..." : "Sign in"}
-              </button>
             </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  id="password" 
+                  type="password" 
+                  placeholder="••••••••" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Select your role</Label>
+              <RadioGroup 
+                defaultValue="student" 
+                value={role || "student"} 
+                onValueChange={(value) => setRole(value as "student" | "teacher" | "pathguider")}
+                className="flex space-x-2"
+              >
+                <div className="flex items-center space-x-2 flex-1 border rounded-md p-3 cursor-pointer hover:bg-muted">
+                  <RadioGroupItem value="student" id="student" />
+                  <Label htmlFor="student" className="cursor-pointer">Student</Label>
+                </div>
+                <div className="flex items-center space-x-2 flex-1 border rounded-md p-3 cursor-pointer hover:bg-muted">
+                  <RadioGroupItem value="teacher" id="teacher" />
+                  <Label htmlFor="teacher" className="cursor-pointer">Teacher</Label>
+                </div>
+                <div className="flex items-center space-x-2 flex-1 border rounded-md p-3 cursor-pointer hover:bg-muted">
+                  <RadioGroupItem value="pathguider" id="pathguider" />
+                  <Label htmlFor="pathguider" className="cursor-pointer">Pathguider</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isLoading}
+            >
+              {isLoading ? 'Logging in...' : 'Login'}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
           </form>
           
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Don't have an account?{" "}
-              <Link to="/signup" className="text-primary hover:text-primary/80 font-medium transition-colors">
-                Sign up
-              </Link>
-            </p>
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-muted-foreground/30" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-card px-2 text-xs text-muted-foreground">
+                OR CONTINUE WITH
+              </span>
+            </div>
           </div>
-        </div>
-      </div>
-      
-      {/* Right side - Image */}
-      <div className="hidden lg:block lg:w-1/2 relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-aagami-sage/20 to-aagami-blue/20 z-10" />
-        <img
-          src="https://images.unsplash.com/photo-1588072432836-e10032774350?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1372&q=80"
-          alt="Students collaborating"
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 flex items-center justify-center z-20">
-          <div className="glass-morphism p-8 rounded-xl max-w-md text-center">
-            <blockquote className="text-xl font-serif text-gray-800 mb-4">
-              "Education is the passport to the future, for tomorrow belongs to those who prepare for it today."
-            </blockquote>
-            <cite className="text-sm text-gray-600">- Malcolm X</cite>
+          
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleGoogleSignIn}
+            disabled={isLoading}
+          >
+            <svg viewBox="0 0 24 24" className="mr-2 h-4 w-4">
+              <path
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                fill="#4285F4"
+              />
+              <path
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                fill="#34A853"
+              />
+              <path
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                fill="#FBBC05"
+              />
+              <path
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                fill="#EA4335"
+              />
+            </svg>
+            Google
+          </Button>
+        </CardContent>
+        <CardFooter className="flex flex-col items-center justify-center space-y-2">
+          <div className="text-sm text-muted-foreground">
+            Don't have an account?{' '}
+            <Link to="/signup" className="text-primary hover:underline">
+              Sign up
+            </Link>
           </div>
-        </div>
-      </div>
+          <div className="text-sm text-muted-foreground">
+            <Link to="/" className="text-primary hover:underline">
+              Back to Home
+            </Link>
+          </div>
+        </CardFooter>
+      </Card>
     </div>
   );
 };

@@ -1,499 +1,506 @@
 
-import { useState } from "react";
-import { Scan, Upload, Smartphone, Camera, Laptop, Monitor, Tablet, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { 
-  Card, 
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
-import { uploadFile, addDocument } from "@/lib/firestoreService";
-import { assessDeviceCondition } from "@/lib/visionApi";
-
-const DEVICE_TYPES = [
-  { icon: Smartphone, label: "Smartphone" },
-  { icon: Laptop, label: "Laptop" },
-  { icon: Tablet, label: "Tablet" },
-  { icon: Monitor, label: "Monitor/Display" },
-  { icon: Camera, label: "Camera" },
-];
+import { useState, useRef } from 'react';
+import { Camera, Upload, QrCode, RefreshCw, Search, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { toast } from '@/hooks/use-toast';
+import { assessDeviceCondition } from '@/lib/visionApi';
+import BackButton from '@/components/shared/BackButton';
 
 const ScanDonatePage = () => {
-  const [deviceType, setDeviceType] = useState<string>("");
-  const [deviceModel, setDeviceModel] = useState<string>("");
-  const [deviceCondition, setDeviceCondition] = useState<string>("");
-  const [images, setImages] = useState<FileList | null>(null);
-  const [additionalInfo, setAdditionalInfo] = useState<string>("");
-  const [donorName, setDonorName] = useState<string>("");
-  const [donorContact, setDonorContact] = useState<string>("");
-  const [isScanning, setIsScanning] = useState<boolean>(false);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [scanResults, setScanResults] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('scan');
+  const [images, setImages] = useState<string[]>([]);
+  const [deviceInfo, setDeviceInfo] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [assessmentResult, setAssessmentResult] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [donationCompleted, setDonationCompleted] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const scannerRef = useRef<HTMLDivElement>(null);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setImages(e.target.files);
+  const handleCapture = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
-  const handleScanDevice = async () => {
-    if (!images || images.length === 0) {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    // Clear previous assessment when new images are uploaded
+    setAssessmentResult(null);
+
+    // Preview the images
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target && typeof event.target.result === 'string') {
+          setImages(prev => [...prev, event.target.result]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleAssess = async () => {
+    if (images.length === 0) {
       toast({
-        title: "No images",
-        description: "Please upload at least one image of the device to scan.",
+        title: "Images Required",
+        description: "Please add at least one image of the device.",
         variant: "destructive"
       });
       return;
     }
 
     setIsScanning(true);
-    setScanResults(null);
-
+    
     try {
-      // In a real app, upload the image first to get a URL
-      const imageUrl = await uploadFile(images[0], "device-scans");
-      
-      // Then use Cloud Vision API to analyze the device
-      const results = await assessDeviceCondition(imageUrl);
-      
-      setScanResults(results);
-      
-      // Auto-fill form fields based on scan results
-      setDeviceType(results.deviceType.toLowerCase());
-      setDeviceCondition(results.condition.toLowerCase());
-      setAdditionalInfo(`Device type: ${results.deviceType}\nBrand: ${results.brand}\nEstimated age: ${results.estimatedAge}\nIssues: ${results.issues.join(', ')}\n\n${additionalInfo}`);
-      
-      toast({
-        title: "Scan complete",
-        description: `Device scanned successfully: ${results.deviceType} in ${results.condition} condition.`,
-      });
+      // Simulate scanning delay for UX
+      setTimeout(async () => {
+        const assessment = await assessDeviceCondition(images[0]);
+        setAssessmentResult(assessment);
+        setIsScanning(false);
+      }, 2000);
     } catch (error) {
-      console.error("Error scanning device:", error);
+      console.error("Error assessing device:", error);
       toast({
-        title: "Scan failed",
-        description: "Failed to scan device. Please try again or enter details manually.",
+        title: "Assessment Failed",
+        description: "Failed to assess device condition. Please try again.",
         variant: "destructive"
       });
-    } finally {
       setIsScanning(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!deviceType || !deviceCondition || !images || images.length === 0) {
+  const handleSubmitDonation = async () => {
+    if (!assessmentResult) {
       toast({
-        title: "Incomplete information",
-        description: "Please fill in all required fields and upload at least one image.",
+        title: "Assessment Required",
+        description: "Please assess the device before submitting donation.",
         variant: "destructive"
       });
       return;
     }
 
     setIsSubmitting(true);
-
+    
     try {
-      // Upload all images
-      const imageUrls = [];
-      for (let i = 0; i < images.length; i++) {
-        const imageUrl = await uploadFile(images[i], "donated-devices");
-        imageUrls.push(imageUrl);
-      }
-
-      // Save donation to Firestore
-      await addDocument("deviceDonations", {
-        deviceType,
-        deviceModel,
-        deviceCondition,
-        images: imageUrls,
-        additionalInfo,
-        donorName,
-        donorContact,
-        scanResults,
-        status: "pending",
-        createdAt: new Date().toISOString(),
-      });
-
-      toast({
-        title: "Donation submitted",
-        description: "Your device donation has been submitted successfully!",
-      });
-
-      // Reset form
-      setDeviceType("");
-      setDeviceModel("");
-      setDeviceCondition("");
-      setImages(null);
-      setAdditionalInfo("");
-      setDonorName("");
-      setDonorContact("");
-      setScanResults(null);
-      
-      // Reset file input
-      const fileInput = document.getElementById("device-images") as HTMLInputElement;
-      if (fileInput) fileInput.value = "";
+      // Simulate donation submission
+      setTimeout(() => {
+        toast({
+          title: "Donation Submitted",
+          description: "Your device donation has been successfully submitted.",
+        });
+        setIsSubmitting(false);
+        setDonationCompleted(true);
+      }, 1500);
     } catch (error) {
       console.error("Error submitting donation:", error);
       toast({
-        title: "Submission failed",
+        title: "Submission Failed",
         description: "Failed to submit your donation. Please try again.",
         variant: "destructive"
       });
-    } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-2">Scan & Donate Device</h1>
-      <p className="text-gray-600 mb-8">
-        Donate your old electronic devices to help students in need
-      </p>
+  if (donationCompleted) {
+    return (
+      <div className="container mx-auto p-6 max-w-4xl">
+        <BackButton to="/pathguider-dashboard" label="Back to Dashboard" />
+        
+        <Card className="mt-6 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-blue-100 to-cyan-100 rounded-t-lg">
+            <CardTitle className="text-center text-2xl text-blue-800">Thank You for Your Donation!</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="flex justify-center mb-6">
+              <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle className="h-10 w-10 text-green-500" />
+              </div>
+            </div>
+            
+            <p className="text-center text-gray-700 mb-8">
+              Your {assessmentResult.deviceType} has been successfully registered for donation.
+              This device will help bridge the digital divide for students in need.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h3 className="font-medium text-blue-800 mb-2">Device Analysis</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Device Type:</span>
+                    <span className="font-medium">{assessmentResult.deviceType}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Estimated Age:</span>
+                    <span>{assessmentResult.estimatedAge}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Condition:</span>
+                    <span className="capitalize">{assessmentResult.condition}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Donation Suitability:</span>
+                    <span className="text-green-600 font-medium">{assessmentResult.donationSuitability}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <h3 className="font-medium text-green-800 mb-2">Your Impact</h3>
+                <p className="text-gray-700 mb-3">
+                  By donating this device, you're making a real difference:
+                </p>
+                <ul className="space-y-2">
+                  <li className="flex items-start">
+                    <span className="bg-green-500 rounded-full p-1 mr-2 mt-1">
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </span>
+                    <span>Providing digital access to a student in need</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="bg-green-500 rounded-full p-1 mr-2 mt-1">
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </span>
+                    <span>Reducing e-waste by extending device life</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="bg-green-500 rounded-full p-1 mr-2 mt-1">
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </span>
+                    <span>Supporting sustainable technology practices</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="mt-8">
+              <h3 className="text-xl font-semibold mb-3">What Happens Next?</h3>
+              <ol className="space-y-2 pl-5 list-decimal">
+                <li>Our refurbishment team will pick up the device</li>
+                <li>The device will be wiped, cleaned, and updated</li>
+                <li>It will be matched with a student in need</li>
+                <li>You'll receive 350 Aagami coins as a thank you</li>
+                <li>You'll get a notification when your device reaches its new owner</li>
+              </ol>
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-center border-t p-6">
+            <Button onClick={() => window.location.href = "/pathguider-dashboard"} className="w-full md:w-auto">
+              Return to Dashboard
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label htmlFor="device-images" className="block text-sm font-medium text-gray-700">
-                Upload Device Images *
-              </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <Input
-                  id="device-images"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="device-images"
-                  className="cursor-pointer flex flex-col items-center justify-center"
-                >
-                  <Upload className="h-10 w-10 text-gray-400 mb-2" />
-                  <span className="text-sm font-medium text-aagami-blue">
-                    Click to upload images
-                  </span>
-                  <span className="text-xs text-gray-500 mt-1">
-                    PNG, JPG, JPEG up to 10MB
-                  </span>
-                </label>
-                {images && images.length > 0 && (
-                  <div className="mt-4 flex flex-col items-center">
-                    <p className="text-sm text-green-600 mb-2">
-                      {images.length} {images.length === 1 ? "image" : "images"} selected
-                    </p>
+  return (
+    <div className="container mx-auto p-6 max-w-4xl">
+      <BackButton to="/pathguider-dashboard" label="Back to Dashboard" />
+      
+      <h1 className="text-2xl font-bold mt-6 mb-2">Scan & Donate Device</h1>
+      <p className="text-gray-600 mb-6">
+        Give your old devices a new life by donating them to students in need. Simply scan your device to assess its condition and suitability for donation.
+      </p>
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="scan">Scan Device</TabsTrigger>
+          <TabsTrigger value="donate" disabled={!assessmentResult}>Donate Device</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="scan" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Upload Device Images</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {images.map((image, index) => (
+                  <div key={index} className="relative rounded-lg overflow-hidden border">
+                    <img src={image} alt={`Device ${index + 1}`} className="w-full h-48 object-cover" />
                     <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 h-8 w-8 rounded-full"
+                      onClick={() => setImages(prev => prev.filter((_, i) => i !== index))}
                       type="button"
-                      onClick={handleScanDevice}
-                      className="bg-aagami-sage hover:bg-aagami-sage/90"
-                      disabled={isScanning}
                     >
-                      {isScanning ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Scanning...
-                        </>
-                      ) : (
-                        <>
-                          <Scan className="mr-2 h-4 w-4" />
-                          Scan Device
-                        </>
-                      )}
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                     </Button>
+                  </div>
+                ))}
+                
+                {images.length === 0 && (
+                  <div className="border border-dashed rounded-lg flex items-center justify-center p-12 col-span-full">
+                    <div className="text-center">
+                      <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                      <p className="mt-2 text-sm text-gray-600">Drag and drop or click to upload device images</p>
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="device-type">Device Type *</Label>
-                <Select value={deviceType} onValueChange={setDeviceType}>
-                  <SelectTrigger id="device-type">
-                    <SelectValue placeholder="Select device type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="smartphone">Smartphone</SelectItem>
-                    <SelectItem value="laptop">Laptop</SelectItem>
-                    <SelectItem value="tablet">Tablet</SelectItem>
-                    <SelectItem value="monitor">Monitor/Display</SelectItem>
-                    <SelectItem value="camera">Camera</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="device-model">Model/Brand</Label>
-                <Input
-                  id="device-model"
-                  placeholder="e.g., Samsung Galaxy S10"
-                  value={deviceModel}
-                  onChange={(e) => setDeviceModel(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="device-condition">Device Condition *</Label>
-              <Select value={deviceCondition} onValueChange={setDeviceCondition}>
-                <SelectTrigger id="device-condition">
-                  <SelectValue placeholder="Select condition" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="excellent">Excellent - Like new</SelectItem>
-                  <SelectItem value="good">Good - Minor wear</SelectItem>
-                  <SelectItem value="fair">Fair - Working with some issues</SelectItem>
-                  <SelectItem value="poor">Poor - Major issues but functional</SelectItem>
-                  <SelectItem value="non-functional">Non-functional - For parts only</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="additional-info">Additional Information</Label>
-              <Textarea
-                id="additional-info"
-                placeholder="Any additional details about the device, accessories included, known issues, etc."
-                value={additionalInfo}
-                onChange={(e) => setAdditionalInfo(e.target.value)}
-                rows={4}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="donor-name">Your Name</Label>
-                <Input
-                  id="donor-name"
-                  placeholder="Full name"
-                  value={donorName}
-                  onChange={(e) => setDonorName(e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="donor-contact">Contact Number</Label>
-                <Input
-                  id="donor-contact"
-                  placeholder="Phone number"
-                  value={donorContact}
-                  onChange={(e) => setDonorContact(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-aagami-blue hover:bg-aagami-blue/90"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting Donation...
-                </>
-              ) : (
-                "Submit Donation"
-              )}
-            </Button>
-          </form>
-        </div>
-
-        <div className="space-y-6">
-          {scanResults ? (
-            <Card className="bg-gradient-to-br from-aagami-sage/20 to-aagami-blue/10">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Scan className="mr-2 h-5 w-5" />
-                  Scan Results
-                </CardTitle>
-                <CardDescription>
-                  AI assessment of your device
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center border-b pb-2">
-                  <span className="font-medium">Device Type:</span>
-                  <span>{scanResults.deviceType}</span>
-                </div>
-                <div className="flex justify-between items-center border-b pb-2">
-                  <span className="font-medium">Brand:</span>
-                  <span>{scanResults.brand}</span>
-                </div>
-                <div className="flex justify-between items-center border-b pb-2">
-                  <span className="font-medium">Estimated Age:</span>
-                  <span>{scanResults.estimatedAge}</span>
-                </div>
-                <div className="flex justify-between items-center border-b pb-2">
-                  <span className="font-medium">Condition:</span>
-                  <span className={`
-                    ${scanResults.condition === "Excellent" ? "text-green-600" : 
-                      scanResults.condition === "Good" ? "text-blue-600" : 
-                      scanResults.condition === "Fair" ? "text-yellow-600" : 
-                      "text-red-600"}
-                    font-medium
-                  `}>
-                    {scanResults.condition}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center border-b pb-2">
-                  <span className="font-medium">Recycle Value:</span>
-                  <span>₹{scanResults.recycleValue}</span>
-                </div>
-                <div className="flex justify-between items-center border-b pb-2">
-                  <span className="font-medium">Donation Suitability:</span>
-                  <span className={`
-                    ${scanResults.donationSuitability === "High" ? "text-green-600" : 
-                      scanResults.donationSuitability === "Medium" ? "text-yellow-600" : 
-                      "text-red-600"}
-                    font-medium
-                  `}>
-                    {scanResults.donationSuitability}
-                  </span>
-                </div>
+              <div className="flex space-x-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCapture}
+                  className="flex-1"
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  Take Photo
+                </Button>
                 
-                <div className="pt-2">
-                  <h4 className="font-medium mb-2">Issues Detected:</h4>
-                  <ul className="text-sm space-y-1">
-                    {scanResults.issues.map((issue: string, index: number) => (
-                      <li key={index} className="flex items-start">
-                        <span className="mr-2">•</span>
-                        <span>{issue}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex-1"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Images
+                </Button>
                 
-                <div className="border-t pt-3 mt-3">
-                  <h4 className="font-medium mb-1">Recommendation:</h4>
-                  <p className="text-sm">{scanResults.recommendation}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {DEVICE_TYPES.map((device, index) => {
-                const DeviceIcon = device.icon;
-                return (
-                  <Card 
-                    key={index} 
-                    className={`cursor-pointer hover:border-aagami-blue transition-all ${
-                      deviceType === device.label.toLowerCase() ? 'border-aagami-blue bg-aagami-blue/5' : ''
-                    }`}
-                    onClick={() => setDeviceType(device.label.toLowerCase())}
-                  >
-                    <CardContent className="p-6 flex flex-col items-center text-center">
-                      <DeviceIcon className="h-12 w-12 text-gray-600 mb-3" />
-                      <h3 className="font-medium">{device.label}</h3>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>How It Works</CardTitle>
-              <CardDescription>
-                Our AI-powered device assessment process
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-aagami-blue/20 text-aagami-blue mr-3">
-                  1
-                </div>
-                <div>
-                  <p className="font-medium">Upload Photos</p>
-                  <p className="text-sm text-gray-600">
-                    Take clear photos of your device from multiple angles showing its condition.
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-start">
-                <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-aagami-blue/20 text-aagami-blue mr-3">
-                  2
-                </div>
-                <div>
-                  <p className="font-medium">AI Analysis</p>
-                  <p className="text-sm text-gray-600">
-                    Our Cloud Vision AI analyzes the photos to assess device type, condition, and value.
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-start">
-                <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-aagami-blue/20 text-aagami-blue mr-3">
-                  3
-                </div>
-                <div>
-                  <p className="font-medium">Recommendation</p>
-                  <p className="text-sm text-gray-600">
-                    We determine if the device is best suited for donation, recycling, or parts recovery.
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-start">
-                <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-aagami-blue/20 text-aagami-blue mr-3">
-                  4
-                </div>
-                <div>
-                  <p className="font-medium">Pickup or Drop-off</p>
-                  <p className="text-sm text-gray-600">
-                    Arrange for device pickup or drop-off at a designated collection point.
-                  </p>
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => toast({
+                    title: "QR Scan",
+                    description: "QR code scanning functionality coming soon!",
+                  })}
+                  className="flex-1"
+                >
+                  <QrCode className="mr-2 h-4 w-4" />
+                  Scan QR
+                </Button>
+                
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                  accept="image/*"
+                  multiple
+                />
               </div>
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-r from-aagami-terracotta/20 to-aagami-sage/10">
+          <Card>
             <CardHeader>
-              <CardTitle>Your Impact</CardTitle>
+              <CardTitle>Device Information</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="mb-4 text-sm">
-                By donating your old device, you're helping bridge the digital divide and providing educational opportunities for underprivileged students.
-              </p>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="bg-white/50 rounded-lg p-3">
-                  <p className="text-2xl font-bold text-aagami-terracotta">1,250+</p>
-                  <p className="text-xs">Devices Donated</p>
-                </div>
-                <div className="bg-white/50 rounded-lg p-3">
-                  <p className="text-2xl font-bold text-aagami-sage">3,800+</p>
-                  <p className="text-xs">Students Helped</p>
-                </div>
-                <div className="bg-white/50 rounded-lg p-3">
-                  <p className="text-2xl font-bold text-aagami-blue">15+</p>
-                  <p className="text-xs">Tons E-Waste Saved</p>
+              <div className="space-y-4">
+                <Input
+                  placeholder="Device model (optional)"
+                  value={deviceInfo}
+                  onChange={(e) => setDeviceInfo(e.target.value)}
+                />
+                
+                <div ref={scannerRef} className="w-full">
+                  {isScanning ? (
+                    <div className="text-center p-6 space-y-4">
+                      <RefreshCw className="mx-auto h-8 w-8 text-primary animate-spin" />
+                      <p>Scanning and assessing device...</p>
+                      <Progress value={55} className="w-full" />
+                    </div>
+                  ) : assessmentResult ? (
+                    <div className="space-y-4 p-4 bg-blue-50 rounded-lg">
+                      <h3 className="font-medium text-lg">Assessment Results</h3>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-500">Device Type</p>
+                          <p className="font-medium">{assessmentResult.deviceType}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Brand</p>
+                          <p className="font-medium">{assessmentResult.brand}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Estimated Age</p>
+                          <p>{assessmentResult.estimatedAge}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Condition</p>
+                          <p>{assessmentResult.condition}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Recycle Value</p>
+                          <p>₹{assessmentResult.recycleValue}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Donation Suitability</p>
+                          <p className="font-medium text-green-600">{assessmentResult.donationSuitability}</p>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <p className="text-sm text-gray-500">Issues Detected</p>
+                        <ul className="list-disc pl-5 mt-1">
+                          {assessmentResult.issues.map((issue: string, i: number) => (
+                            <li key={i} className="text-sm">{issue}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      
+                      <div>
+                        <p className="text-sm text-gray-500">Recommendation</p>
+                        <p className="text-green-600">{assessmentResult.recommendation}</p>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setImages([]);
+                  setDeviceInfo('');
+                  setAssessmentResult(null);
+                }}
+                disabled={isScanning || images.length === 0}
+              >
+                Clear
+              </Button>
+              <Button 
+                onClick={handleAssess}
+                disabled={isScanning || images.length === 0}
+              >
+                {isScanning ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Scanning...
+                  </>
+                ) : assessmentResult ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Rescan
+                  </>
+                ) : (
+                  <>
+                    <Search className="mr-2 h-4 w-4" />
+                    Assess Device
+                  </>
+                )}
+              </Button>
+              {assessmentResult && (
+                <Button onClick={() => setActiveTab('donate')} disabled={isScanning}>
+                  Continue to Donation
+                </Button>
+              )}
+            </CardFooter>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+        
+        <TabsContent value="donate" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Donation Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <h3 className="font-medium mb-2">Device Assessment Summary</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Device</p>
+                      <p className="font-medium">{assessmentResult?.deviceType} ({assessmentResult?.brand})</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Condition</p>
+                      <p className="font-medium">{assessmentResult?.condition}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Value</p>
+                      <p className="font-medium">₹{assessmentResult?.recycleValue}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Donation Suitability</p>
+                      <p className="font-medium text-green-600">{assessmentResult?.donationSuitability}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
+                  <Textarea 
+                    placeholder="Any additional information about the device that might be helpful (optional)"
+                    rows={4}
+                  />
+                </div>
+                
+                <div className="p-4 border rounded-lg">
+                  <h3 className="font-medium mb-2">Before Donating</h3>
+                  <p className="text-sm text-gray-600 mb-2">Please ensure you have:</p>
+                  <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1">
+                    <li>Backed up any important data</li>
+                    <li>Removed any personal information</li>
+                    <li>Returned the device to factory settings if possible</li>
+                    <li>Included any relevant accessories (charger, cables)</li>
+                  </ul>
+                </div>
+                
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <h3 className="font-medium text-green-800 mb-2">Your Impact</h3>
+                  <p className="text-sm text-gray-700">
+                    This donation will help bridge the digital divide by providing a student with access to technology for their education.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-4">
+              <div className="flex w-full space-x-4">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setActiveTab('scan')}
+                >
+                  Back to Scan
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={handleSubmitDonation}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Complete Donation
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

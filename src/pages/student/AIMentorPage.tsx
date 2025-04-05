@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
 import { aiMentorChat } from '@/lib/geminiApi';
 import { toast } from '@/hooks/use-toast';
+import BackButton from '@/components/shared/BackButton';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -113,13 +114,8 @@ const AIMentorPage = () => {
       <header className="bg-white shadow-sm">
         <div className="flex items-center justify-between py-4 px-6">
           <div className="flex items-center">
-            <Link 
-              to="/student-dashboard" 
-              className="mr-4 p-2 text-gray-500 hover:text-primary hover:bg-primary/10 rounded-full transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <h1 className="text-xl font-medium flex items-center">
+            <BackButton to="/student-dashboard" />
+            <h1 className="text-xl font-medium flex items-center ml-2">
               <Bot className="h-6 w-6 mr-2 text-aagami-blue" />
               AI Mentor
             </h1>

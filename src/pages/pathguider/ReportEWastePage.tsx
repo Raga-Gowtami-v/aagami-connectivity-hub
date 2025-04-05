@@ -1,56 +1,74 @@
 
-import { useState } from "react";
-import { Upload, MapPin, Check, Loader2 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/hooks/use-toast";
-import { uploadFile, addDocument } from "@/lib/firestoreService";
+import { useState, useRef } from 'react';
+import { Camera, Upload, Send, Trash2, MapPin, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from '@/hooks/use-toast';
+import { assessDeviceCondition } from '@/lib/visionApi';
+import { getLocationCoordinates } from '@/lib/googleApis';
+import BackButton from '@/components/shared/BackButton';
 
 const ReportEWastePage = () => {
-  const { userData } = useAuth();
-  const [images, setImages] = useState<FileList | null>(null);
-  const [location, setLocation] = useState<string>("");
-  const [description, setDescription] = useState<string>("");
+  const [images, setImages] = useState<string[]>([]);
+  const [location, setLocation] = useState('');
+  const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [analysis, setAnalysis] = useState<any>(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setImages(e.target.files);
+  const handleCapture = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
-  const getCurrentLocation = () => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    // Preview the images
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target && typeof event.target.result === 'string') {
+          setImages(prev => [...prev, event.target.result]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUseCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCurrentLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-          
-          // In a real app, we would use Google Maps Geocoding API to get the address
-          setLocation("Your current location");
-          
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          // In a real app, we would use reverse geocoding here
+          setLocation(`Lat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}`);
           toast({
-            title: "Location retrieved",
-            description: "Your current location has been detected successfully.",
+            title: "Location Detected",
+            description: "Your current location has been set.",
           });
         },
-        () => {
+        (error) => {
           toast({
-            title: "Location error",
-            description: "Unable to retrieve your location. Please enter it manually.",
+            title: "Location Error",
+            description: error.message,
             variant: "destructive"
           });
         }
       );
     } else {
       toast({
-        title: "Geolocation unavailable",
-        description: "Geolocation is not supported by your browser. Please enter location manually.",
+        title: "Location Not Supported",
+        description: "Your browser does not support geolocation.",
         variant: "destructive"
       });
     }
@@ -58,64 +76,45 @@ const ReportEWastePage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!images || images.length === 0) {
+    
+    if (images.length === 0) {
       toast({
-        title: "No images",
-        description: "Please upload at least one image of the e-waste.",
+        title: "Images Required",
+        description: "Please add at least one image of the e-waste.",
         variant: "destructive"
       });
       return;
     }
-
+    
     if (!location) {
       toast({
-        title: "No location",
-        description: "Please enter a location or use your current location.",
+        title: "Location Required",
+        description: "Please provide the location of the e-waste.",
         variant: "destructive"
       });
       return;
     }
-
+    
     setIsSubmitting(true);
-
+    
     try {
-      // Upload images to Firebase Storage
-      const imageUrls = [];
-      for (let i = 0; i < images.length; i++) {
-        const imageUrl = await uploadFile(images[i], "e-waste-reports");
-        imageUrls.push(imageUrl);
-      }
-
-      // Save report to Firestore
-      await addDocument("eWasteReports", {
-        userId: userData?.uid,
-        userName: userData?.displayName,
-        location,
-        description,
-        images: imageUrls,
-        coordinates: currentLocation,
-        status: "pending",
-      });
-
-      toast({
-        title: "Report submitted",
-        description: "Your e-waste report has been submitted successfully!",
-      });
-
-      // Reset form
-      setImages(null);
-      setLocation("");
-      setDescription("");
-      setCurrentLocation(null);
+      // Get coordinates from the location
+      const coordinates = await getLocationCoordinates(location);
       
-      // Reset file input
-      const fileInput = document.getElementById("e-waste-images") as HTMLInputElement;
-      if (fileInput) fileInput.value = "";
+      // Analyze the e-waste images using Cloud Vision API
+      const analysisResults = await assessDeviceCondition(images[0]);
+      
+      setAnalysis(analysisResults);
+      setIsSubmitted(true);
+      
+      toast({
+        title: "Report Submitted",
+        description: "Your e-waste report has been submitted successfully.",
+      });
     } catch (error) {
       console.error("Error submitting report:", error);
       toast({
-        title: "Submission failed",
+        title: "Submission Failed",
         description: "Failed to submit your report. Please try again.",
         variant: "destructive"
       });
@@ -124,208 +123,218 @@ const ReportEWastePage = () => {
     }
   };
 
-  return (
-    <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-2">Report E-Waste</h1>
-      <p className="text-gray-600 mb-8">
-        Help us locate and recycle electronic waste in your community
-      </p>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label htmlFor="e-waste-images" className="block text-sm font-medium text-gray-700">
-                Upload Images
-              </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <Input
-                  id="e-waste-images"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="e-waste-images"
-                  className="cursor-pointer flex flex-col items-center justify-center"
-                >
-                  <Upload className="h-10 w-10 text-gray-400 mb-2" />
-                  <span className="text-sm font-medium text-aagami-blue">
-                    Click to upload images
-                  </span>
-                  <span className="text-xs text-gray-500 mt-1">
-                    PNG, JPG, JPEG up to 10MB
-                  </span>
-                </label>
-                {images && images.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-sm text-green-600">
-                      <Check className="h-4 w-4 inline mr-1" />
-                      {images.length} {images.length === 1 ? "image" : "images"} selected
-                    </p>
+  if (isSubmitted && analysis) {
+    return (
+      <div className="container mx-auto p-6 max-w-4xl">
+        <BackButton to="/pathguider-dashboard" label="Back to Dashboard" />
+        
+        <Card className="mt-6 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-green-100 to-teal-100 rounded-t-lg">
+            <CardTitle className="text-center text-2xl text-green-800">Thank You for Your Report!</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="flex-1">
+                <h3 className="text-xl font-semibold mb-3">E-Waste Analysis</h3>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Device Type</p>
+                    <p className="font-medium">{analysis.deviceType}</p>
                   </div>
-                )}
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Estimated Age</p>
+                    <p>{analysis.estimatedAge}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Condition</p>
+                    <p>{analysis.condition}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Recycle Value</p>
+                    <p>₹{analysis.recycleValue}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Issues</p>
+                    <ul className="list-disc pl-5">
+                      {analysis.issues.map((issue: string, i: number) => (
+                        <li key={i}>{issue}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex-1">
+                <h3 className="text-xl font-semibold mb-3">Environmental Impact</h3>
+                <p className="text-gray-700 mb-4">
+                  By reporting this e-waste, you're preventing harmful materials from entering landfills and waterways.
+                </p>
+                
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <h4 className="font-medium text-green-800 mb-2">Your Impact:</h4>
+                  <ul className="space-y-2">
+                    <li className="flex items-start">
+                      <span className="bg-green-500 rounded-full p-1 mr-2 mt-1">
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                      </span>
+                      <span>Saved up to 1.5kg of CO2 emissions</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="bg-green-500 rounded-full p-1 mr-2 mt-1">
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                      </span>
+                      <span>Prevented toxic materials from entering the environment</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="bg-green-500 rounded-full p-1 mr-2 mt-1">
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                      </span>
+                      <span>Contributed to sustainable resource management</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
+            
+            <div className="mt-8">
+              <h3 className="text-xl font-semibold mb-3">What Happens Next?</h3>
+              <ol className="space-y-2 pl-5 list-decimal">
+                <li>Our team will review your report and verify the details</li>
+                <li>A collection team will be assigned to your reported location</li>
+                <li>You'll receive a notification when the e-waste is scheduled for pickup</li>
+                <li>Once collected, you'll earn Aagami reward points for your contribution</li>
+              </ol>
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-center border-t p-6">
+            <Button onClick={() => window.location.href = "/pathguider-dashboard"} className="w-full md:w-auto">
+              Return to Dashboard
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
 
-            <div className="space-y-2">
-              <label htmlFor="location" className="block text-sm font-medium text-gray-700">
-                Location
-              </label>
-              <div className="flex gap-2">
+  return (
+    <div className="container mx-auto p-6 max-w-4xl">
+      <BackButton to="/pathguider-dashboard" label="Back to Dashboard" />
+      
+      <h1 className="text-2xl font-bold mt-6 mb-4">Report E-Waste</h1>
+      <p className="text-gray-600 mb-6">
+        Help us clean up electronic waste in your area by reporting it. Take photos of the e-waste and provide its location.
+      </p>
+      
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Upload E-Waste Images</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              {images.map((image, index) => (
+                <div key={index} className="relative rounded-lg overflow-hidden border">
+                  <img src={image} alt={`E-waste ${index + 1}`} className="w-full h-48 object-cover" />
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 h-8 w-8 rounded-full"
+                    onClick={() => removeImage(index)}
+                    type="button"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              
+              {images.length === 0 && (
+                <div className="border border-dashed rounded-lg flex items-center justify-center p-12 col-span-full">
+                  <div className="text-center">
+                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                    <p className="mt-2 text-sm text-gray-600">Drag and drop or click to upload images</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCapture}
+                className="flex-1"
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                Capture Photo
+              </Button>
+              
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex-1"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Images
+              </Button>
+              
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept="image/*"
+                multiple
+              />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Location Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
                 <Input
-                  id="location"
-                  placeholder="Enter location of e-waste"
+                  placeholder="Enter location"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="flex-grow"
+                  className="flex-1"
                 />
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={getCurrentLocation}
-                  className="flex-shrink-0"
+                  onClick={handleUseCurrentLocation}
                 >
-                  <MapPin className="h-4 w-4 mr-2" />
-                  Current
+                  <MapPin className="mr-2 h-4 w-4" />
+                  Use Current Location
                 </Button>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                Description
-              </label>
+              
               <Textarea
-                id="description"
-                placeholder="Describe the type and quantity of e-waste you found..."
+                placeholder="Describe the e-waste and its surroundings (optional)"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                rows={5}
+                rows={4}
               />
             </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-aagami-blue hover:bg-aagami-blue/90"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting Report...
-                </>
-              ) : (
-                "Submit Report"
-              )}
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Submitting...' : 'Submit Report'}
+              <Send className="ml-2 h-4 w-4" />
             </Button>
-          </form>
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4">Why Report E-Waste?</h2>
-            <ul className="space-y-4">
-              <li className="flex items-start">
-                <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-aagami-blue/20 text-aagami-blue mr-3">
-                  1
-                </span>
-                <div>
-                  <p className="font-medium">Environmental Impact</p>
-                  <p className="text-sm text-gray-600">
-                    E-waste contains hazardous materials that can contaminate soil and water if not properly disposed of.
-                  </p>
-                </div>
-              </li>
-              <li className="flex items-start">
-                <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-aagami-blue/20 text-aagami-blue mr-3">
-                  2
-                </span>
-                <div>
-                  <p className="font-medium">Resource Recovery</p>
-                  <p className="text-sm text-gray-600">
-                    Electronic devices contain valuable metals and components that can be recycled and reused.
-                  </p>
-                </div>
-              </li>
-              <li className="flex items-start">
-                <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-aagami-blue/20 text-aagami-blue mr-3">
-                  3
-                </span>
-                <div>
-                  <p className="font-medium">Digital Inclusion</p>
-                  <p className="text-sm text-gray-600">
-                    Some devices can be refurbished and donated to students who need them for education.
-                  </p>
-                </div>
-              </li>
-              <li className="flex items-start">
-                <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-aagami-blue/20 text-aagami-blue mr-3">
-                  4
-                </span>
-                <div>
-                  <p className="font-medium">Community Service</p>
-                  <p className="text-sm text-gray-600">
-                    You earn service credits and help clean up your community by reporting e-waste.
-                  </p>
-                </div>
-              </li>
-            </ul>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4">What Happens Next?</h2>
-            <ol className="space-y-4">
-              <li className="flex items-start">
-                <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-aagami-terracotta/20 text-aagami-terracotta mr-3">
-                  1
-                </span>
-                <div>
-                  <p className="font-medium">Verification</p>
-                  <p className="text-sm text-gray-600">
-                    Our team reviews your report to verify the type and quantity of e-waste.
-                  </p>
-                </div>
-              </li>
-              <li className="flex items-start">
-                <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-aagami-terracotta/20 text-aagami-terracotta mr-3">
-                  2
-                </span>
-                <div>
-                  <p className="font-medium">Collection Planning</p>
-                  <p className="text-sm text-gray-600">
-                    We coordinate with local collection partners to schedule a pickup.
-                  </p>
-                </div>
-              </li>
-              <li className="flex items-start">
-                <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-aagami-terracotta/20 text-aagami-terracotta mr-3">
-                  3
-                </span>
-                <div>
-                  <p className="font-medium">Processing</p>
-                  <p className="text-sm text-gray-600">
-                    The e-waste is sorted for recycling, refurbishment, or proper disposal.
-                  </p>
-                </div>
-              </li>
-              <li className="flex items-start">
-                <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-aagami-terracotta/20 text-aagami-terracotta mr-3">
-                  4
-                </span>
-                <div>
-                  <p className="font-medium">Impact Update</p>
-                  <p className="text-sm text-gray-600">
-                    You'll receive an update on the environmental impact of your report.
-                  </p>
-                </div>
-              </li>
-            </ol>
-          </div>
-        </div>
-      </div>
+          </CardFooter>
+        </Card>
+      </form>
     </div>
   );
 };
